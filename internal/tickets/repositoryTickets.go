@@ -1,48 +1,67 @@
 package tickets
 
 import (
-	"context"
-	"fmt"
-
+	"github.com/MarcelaCuellarML/desafio-goweb-MarcelaCuellar/internal/domain"
+	"github.com/MarcelaCuellarML/desafio-goweb-MarcelaCuellar/pkg/store"
 )
 
-type Repository interface {
-	GetAll(ctx context.Context) ([]domain.Ticket, error)
-	GetTicketByDestination(ctx context.Context, destination string) ([]domain.Ticket, error)
+type TicketRepository interface {
+	GetAll() ([]domain.Ticket, error)
+	GetCountTicketByDestination(destination string) (int, error)
+	GetAverageByDate(destination, date string) (int, error)
 }
+
+var tickets []domain.Ticket
 
 type repository struct {
-	db []domain.Ticket
+	db store.Store
 }
 
-func NewRepository(db []domain.Ticket) Repository {
+func NewRepository(db store.Store) TicketRepository {
 	return &repository{
 		db: db,
 	}
 }
 
-func (r *repository) GetAll(ctx context.Context) ([]domain.Ticket, error) {
+func (rp *repository) GetAll() ([]domain.Ticket, error) {
 
-	if len(r.db) == 0 {
-		return []domain.Ticket{}, fmt.Errorf("empty list of tickets")
+	err := rp.db.Read(&tickets)
+	if err != nil {
+		return nil, err
 	}
-
-	return r.db, nil
+	return tickets, nil
 }
 
-func (r *repository) GetTicketByDestination(ctx context.Context, destination string) ([]domain.Ticket, error) {
-
-	var ticketsDest []domain.Ticket
-
-	if len(r.db) == 0 {
-		return []domain.Ticket{}, fmt.Errorf("empty list of tickets")
+func (rp *repository) GetCountTicketByDestination(destination string) (int, error) {
+	err := rp.db.Read(&tickets)
+	if err != nil {
+		return 0, err
 	}
-
-	for _, t := range r.db {
-		if t.Country == destination {
-			ticketsDest = append(ticketsDest, t)
+	var count int
+	for _, ticketFilt := range tickets {
+		if ticketFilt.Country == destination {
+			count = count + 1
 		}
 	}
 
-	return ticketsDest, nil
+	return count, nil
+}
+
+func (rp *repository) GetAverageByDate(destination, date string) (int, error) {
+	err := rp.db.Read(&tickets)
+	if err != nil {
+		return 0, err
+	}
+	var count int
+	var countDate int
+	for _, ticketFilt := range tickets {
+		if ticketFilt.Country == date {
+			countDate = countDate + 1
+			if ticketFilt.Time == destination {
+				count = count + 1
+			}
+		}
+	}
+	average := countDate / count
+	return average, nil
 }
